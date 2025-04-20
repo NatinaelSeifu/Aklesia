@@ -1,0 +1,8 @@
+python-telegram-bot
+psycopg2-binary
+python-dotenv
+apscheduler
+asyncio
+ethiopian-date-converter
+#ethiopian_date
+#telegram
