@@ -367,6 +367,12 @@ async def handle_mybookings_callback(update: Update, context: ContextTypes.DEFAU
         if not old_date_row:
             return await query.edit_message_text("❌ ምንም ቀጠሮ የለም.")
 
+        # if the date doesnt exist in the available days table, add it
+        cursor.execute("SELECT appointment_date FROM available_days WHERE appointment_date = %s", (new_date,))
+        if not cursor.fetchone():
+            cursor.execute("INSERT INTO available_days (appointment_date, max_slots) VALUES (%s, 15)", (new_date,))
+            conn.commit()
+
         # Apply the change
         cursor.execute("UPDATE appointments SET appointment_date = %s WHERE id = %s", (new_date, appointment_id))
         conn.commit()
