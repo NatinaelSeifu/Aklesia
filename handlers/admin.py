@@ -96,15 +96,34 @@ async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TY
         appointment_id = int(data.split("_")[2])
         cursor.execute("UPDATE appointments SET status = 'የተሰረዘ' WHERE id = %s", (appointment_id,))
         conn.commit()
+        # notify user
+        cursor.execute("""
+            SELECT u.telegram_id, a.appointment_date
+            FROM appointments a
+            JOIN users u ON a.user_id = u.id
+            WHERE a.id = %s
+        """, (appointment_id,))
+        result = cursor.fetchone()
+        if result:
+            telegram_id, appt_date = result
+            message = (
+                f"❌ የቀጠሮ ስረዛ ማስታውሻ\n\n"
+                f"በ {to_ethiopian(appt_date)} የነበሮት ቀን ተሰርዟል.\n"
+                f"እባኮት አዲስ ቀን ለመምረጥ /book የሚለውን ይጠቀሙ."
+            )
+            try:
+                await context.bot.send_message(telegram_id, message)
+            except Exception as e:
+                print(f"Failed to notify user {telegram_id}: {e}")
         return await query.edit_message_text("✅ ቀጠሮውን ሰርዘዋል")
 
 # 📅 Add Availability
 async def handle_add_avail_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMIN_ID:
-        return await update.message.reply_text("🚫 Unauthorized.")
+        return await update.message.reply_text("🚫 ያልተፈቀደ.")
     
     context.user_data["avail_state"] = "awaiting_date"
-    await update.message.reply_text("📅 Please enter the date for availability (YYYY-MM-DD):")
+    await update.message.reply_text("📅 እባኮትን የሚገኙበትን ቀን ያስፍሩ (YYYY-MM-DD):")
     return "awaiting_date"
 
 async def handle_add_avail_step(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -121,23 +140,23 @@ async def handle_add_avail_step(update: Update, context: ContextTypes.DEFAULT_TY
             #avail_date = datetime.strptime(date_text, "%Y-%m-%d").date()
             avail_date= ethiopian_to_gregorian(date_text)
         except ValueError:
-            await update.message.reply_text("❌ Invalid date. Please enter a valid date (e.g. 2025-04-29).")
+            await update.message.reply_text("❌ የተሳሳተ ቀን. እባኮትን በዚህ መስፈርት ያስገቡ (e.g. 2017-04-29).")
             return "awaiting_date"
 
         if avail_date < datetime.today().date():
-            await update.message.reply_text("❌ Date must be in the future.")
+            await update.message.reply_text("❌ ያለፉ ቀናትን ማስገባት አይችሉም.")
             return "awaiting_date"
 
         context.user_data["avail_date"] = avail_date
         context.user_data["avail_state"] = "awaiting_slots"
-        await update.message.reply_text("🔢 How many slots should be available for this day?")
+        await update.message.reply_text("🔢 ምን ያህል ሰዎችን ማግኝት ይችላሉ?")
         return "awaiting_slots"
 
     elif state == "awaiting_slots":
         slots_text = update.message.text.strip()
 
         if not slots_text.isdigit() or int(slots_text) <= 0:
-            await update.message.reply_text("❌ Please enter a valid number greater than 0.")
+            await update.message.reply_text("❌ ከ 0 በላይ የሆነ ቁጥር ያስገቡ.")
             return "awaiting_slots"
 
         slots = int(slots_text)
@@ -153,7 +172,7 @@ async def handle_add_avail_step(update: Update, context: ContextTypes.DEFAULT_TY
         context.user_data.pop("avail_date", None)
         
         await update.message.reply_text(
-            f"✅ Availability set for {to_ethiopian(avail_date)} with {slots} slots."
+            f"✅ በ {to_ethiopian(avail_date)} {slots} ሰዎችን ለማግኘት ቀን አስገብተዋል."
         )
         return ConversationHandler.END
 
@@ -182,7 +201,7 @@ async def handle_cancel_avail_command(update: Update, context: ContextTypes.DEFA
     
     if not availabilities:
         if update.callback_query:
-            await update.callback_query.edit_message_text("📭 No upcoming availabilities to cancel.")
+            await update.callback_query.edit_message_text("📭 ምንም የሚሰረዙ ቀናት የሉም.")
         else:
             await update.message.reply_text("📭 No upcoming availabilities to cancel.")
         return
@@ -206,10 +225,10 @@ async def handle_cancel_avail_callback(update: Update, context: ContextTypes.DEF
     admin_id = query.from_user.id
 
     if admin_id not in ADMIN_ID:
-        return await query.edit_message_text("🚫 Unauthorized.")
+        return await query.edit_message_text("🚫 ያልተፈቀደ.")
 
     if data == "cancel_avail_menu":
-        await query.edit_message_text("🚫 Operation cancelled.")
+        await query.edit_message_text("🚫 አቋርጠው ወተዋል.")
         return
 
     if data.startswith("cancel_avail_"):
@@ -217,9 +236,9 @@ async def handle_cancel_avail_callback(update: Update, context: ContextTypes.DEF
         try:
             date = datetime.strptime(date_str, "%Y-%m-%d").date()
             if date < datetime.now().date():
-                return await query.edit_message_text("❌ Cannot cancel past dates.")
+                return await query.edit_message_text("❌ ያለፉ ቀናትን ማቷረጥ አይቻልም.")
         except ValueError:
-            return await query.edit_message_text("❌ Invalid date format. Use YYYY-MM-DD.")
+            return await query.edit_message_text("❌ የተሳሳተ ቀን. እባኮትን በዚህ መስፈርት ያስገቡ (2017-08-29).")
 
         # Get appointment count and user details
         cursor.execute("""
@@ -273,7 +292,7 @@ async def handle_cancel_avail_callback(update: Update, context: ContextTypes.DEF
                 for user_id in telegram_ids:
                     try:
                         await bot.send_message(user_id, message)
-                        await asyncio.sleep(0.3)  # Rate limiting
+                        await asyncio.sleep(3)  # Rate limiting
                     except Exception as e:
                         print(f"Failed to notify user {user_id}: {e}")
 

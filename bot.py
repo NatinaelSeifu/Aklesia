@@ -18,21 +18,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def set_commands(app):
     commands = [
-        BotCommand("start", "Start the bot"),
-        BotCommand("register", "Register your account"),
-        BotCommand("book", "Book an appointment"),
-        BotCommand("cancel", "Cancel your appointment"),
-        BotCommand("profile", "View your profile"),
-        BotCommand("mybookings", "View or manage your bookings"),
+        BotCommand("start", "ቦቱን ያስጀምሩ"),
+        BotCommand("register", "ይመዘገቡ"),
+        BotCommand("book", "ቀጠሮ ያስይዙ"),
+#        BotCommand("cancel", "Cancel your appointment"),
+        BotCommand("profile", "መገለጫዎን ይመልከቱ"),
+        BotCommand("mybookings", "ያሎትን ቀጠሮዎች ይመልከቱ"),
     ]
 
-    # Only show /admin for the doctor
+    # Only show /admin for the admin
     if os.getenv("ADMIN_TELEGRAM_ID"):
         await app.bot.set_my_commands(
-            commands + [
-                BotCommand("appointments", "Admin panel (admin only)"),
-                BotCommand("addavailability", "Add available dates (admin only)"),
-                BotCommand("availability", "Remove available dates (admin only)")  
+            # if needed the user use commands + []
+            commands = [
+                BotCommand("appointments", "ቀጠሮዎች ይመልከቱ"),
+                BotCommand("addavailability", "የቀን ዝርዝር ያክሉ"),
+                BotCommand("availability", "የቀን ዝርዝር ይሰርዙ"),  
 
             ],
             scope=BotCommandScopeChat(chat_id=int(os.getenv("ADMIN_TELEGRAM_ID")))
