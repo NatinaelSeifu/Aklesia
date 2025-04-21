@@ -180,14 +180,14 @@ async def handle_add_avail_step(update: Update, context: ContextTypes.DEFAULT_TY
 async def cancel_availability_creation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop("avail_state", None)
     context.user_data.pop("avail_date", None)
-    await update.message.reply_text("❌ Availability creation cancelled.")
+    await update.message.reply_text("❌ ቀን ማስገባቶን አቋርጠው ወተዋል.")
     return ConversationHandler.END
 
 # Cancel Existing Availabilities
 async def handle_cancel_avail_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMIN_ID:
         if update.callback_query:
-            await update.callback_query.answer("🚫 Unauthorized.")
+            await update.callback_query.answer("🚫 ያልተፈቀደ.")
         return
     
     cursor.execute("""
@@ -203,11 +203,11 @@ async def handle_cancel_avail_command(update: Update, context: ContextTypes.DEFA
         if update.callback_query:
             await update.callback_query.edit_message_text("📭 ምንም የሚሰረዙ ቀናት የሉም.")
         else:
-            await update.message.reply_text("📭 No upcoming availabilities to cancel.")
+            await update.message.reply_text("📭 ምንም የሚሰረዙ ቀናት የሉም.")
         return
     keyboard = [
         [InlineKeyboardButton(
-            f"{ethiopian_day_name(date)} {to_ethiopian(date)} ({slots} slots)",
+            f"{ethiopian_day_name(date)} {to_ethiopian(date)} ({slots} ቦታዎች)",
             callback_data=f"cancel_avail_{date.strftime('%Y-%m-%d')}")]
         for date, slots in availabilities
     ]
@@ -279,7 +279,7 @@ async def handle_cancel_avail_callback(update: Update, context: ContextTypes.DEF
             message = (
                 f"⚠️ የቀጠሮ ስረዛ ማስታውሻ\n\n"
                 f"በ {to_ethiopian(date_str)} የነበሮት ቀን ተሰርዟል.\n"
-                f"Please book a new appointment using /book."
+                f"እባኮት አዲስ ቀን ለመምረጥ /book የሚለውን ይጫኑ."
             )
             
             # Delete availability (will cascade to appointments)
@@ -294,7 +294,7 @@ async def handle_cancel_avail_callback(update: Update, context: ContextTypes.DEF
                         await bot.send_message(user_id, message)
                         await asyncio.sleep(3)  # Rate limiting
                     except Exception as e:
-                        print(f"Failed to notify user {user_id}: {e}")
+                        print(f"ማሳወቅ አልተቻለም {user_id}: {e}")
 
             await query.edit_message_text(
                 f"✅ በ {to_ethiopian(date_str)} የነበረው ቀን ተሰርዟል.\n"

@@ -108,7 +108,7 @@ async def handle_register_convo(update: Update, context: ContextTypes.DEFAULT_TY
                 return await update.message.reply_text("📅 የገቡበትን ቀን ቀይረዋል.")
         except ValueError:
             logger.warning(f"User {user_id} provided invalid date: {text}")
-            return await update.message.reply_text("⚠️ የተሳሳተ ቀን አስገብተዋል. እባኮትን በዚህ መንገድ ያስተካክሉ: 2024-12-25")
+            return await update.message.reply_text("⚠️ የተሳሳተ ቀን አስገብተዋል. እባኮትን በዚህ መንገድ ያስተካክሉ: 2027-08-25")
 
 # Inline keyboard handler
 async def handle_edit_profile_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
