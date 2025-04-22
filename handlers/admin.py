@@ -313,3 +313,51 @@ async def handle_cancel_avail_callback(update: Update, context: ContextTypes.DEF
     if data == "avail_cancel_back":
         #context.user_data.pop('pending_cancel', None)
         await query.edit_message_text("✅ ትተው ወተዋል።")
+
+
+async def handle_view_questions(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMIN_ID:
+        return await update.message.reply_text("🚫 ይህን ለመጠቀም አልተፈቀደሎትም.")
+    
+    cursor.execute("""
+        SELECT id, question, status
+        FROM questions
+        WHERE status = 'በመጠበቅ'
+        ORDER BY created_at DESC
+    """)
+    questions = cursor.fetchall()
+
+    if not questions:
+        return await update.message.reply_text("📭 ምንም ጥያቄ የሎትም.")
+
+    for q_id, question, status in questions:
+        keyboard = [
+            [InlineKeyboardButton("✅ ተመልሷል", callback_data=f"question_complete_{q_id}"),
+             InlineKeyboardButton("❌ ሰርዝ", callback_data=f"question_cancel_{q_id}")]
+        ]
+        await update.message.reply_text(
+            f"❓ {question}\n"
+            f"📌 ሁኔታ: {status.capitalize()}",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+# 🔄 Admin Callback Handler for Questions
+async def handle_admin_question_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+    admin_id = query.from_user.id
+
+    if admin_id not in ADMIN_ID:
+        return await query.edit_message_text("🚫 ይህን ለመጠቀም አልተፈቀደሎትም.")
+    
+    if data.startswith("question_complete_"):
+        question_id = int(data.split("_")[2])
+        cursor.execute("UPDATE questions SET status = 'የተጠናቀቀ' WHERE id = %s", (question_id,))
+        conn.commit()
+        return await query.edit_message_text("✅ ጥያቄው ተመልሷል.")
+    elif data.startswith("question_cancel_"):
+        question_id = int(data.split("_")[2])
+        cursor.execute("UPDATE questions SET status = 'የተሰረዘ' WHERE id = %s", (question_id,))
+        conn.commit()
+        return await query.edit_message_text("❌ ጥያቄው ተሰረዟል.")

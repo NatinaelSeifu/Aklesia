@@ -1,3 +1,4 @@
+
 import os
 from dotenv import load_dotenv
 from telegram import Update, BotCommand,BotCommandScopeChat
@@ -7,7 +8,7 @@ from telegram.ext import (
 )
 
 
-from handlers import register, book,admin
+from handlers import register, book,admin,questions
 
 load_dotenv()
 
@@ -24,6 +25,7 @@ async def set_commands(app):
 #        BotCommand("cancel", "Cancel your appointment"),
         BotCommand("profile", "መገለጫዎን ይመልከቱ"),
         BotCommand("mybookings", "ያሎትን ቀጠሮዎች ይመልከቱ"),
+        BotCommand("questions", "ጥያቄ ያቅርቡ"),
     ]
 
     # Only show /admin for the admin
@@ -34,7 +36,7 @@ async def set_commands(app):
                 BotCommand("appointments", "ቀጠሮዎች ይመልከቱ"),
                 BotCommand("addavailability", "የቀን ዝርዝር ያክሉ"),
                 BotCommand("availability", "የቀን ዝርዝር ይሰርዙ"),  
-
+                BotCommand("question", "ጥያቄዎች ይመልከቱ"),
             ],
             scope=BotCommandScopeChat(chat_id=int(os.getenv("ADMIN_TELEGRAM_ID")))
         )
@@ -48,6 +50,7 @@ async def set_commands(app):
 def main():
     app = ApplicationBuilder().token(os.getenv("BOT_TOKEN")).build()
 
+    
     # Update the fallbacks to include the new cancel command
     app.add_handler(ConversationHandler(
         entry_points=[CommandHandler("addavailability", admin.handle_add_avail_command)],
@@ -61,6 +64,7 @@ def main():
         ],
     ))
     
+    app.add_handler(questions.questions_conversation)
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("register", register.handle_register))
     app.add_handler(CommandHandler("profile", register.handle_profile))
@@ -77,6 +81,10 @@ def main():
     # Add these new handlers after your existing admin handlers:
     app.add_handler(CommandHandler("availability", admin.handle_cancel_avail_command))
     app.add_handler(CallbackQueryHandler(admin.handle_cancel_avail_callback, pattern=r"^cancel_avail_\d{4}-\d{2}-\d{2}$|^confirm_cancel_\d{4}-\d{2}-\d{2}$|^avail_cancel_back$|^cancel_avail_menu$"))
+    app.add_handler(CommandHandler("question", admin.handle_view_questions))
+    app.add_handler(CallbackQueryHandler(admin.handle_admin_question_callback, pattern=r"^question_cancel_\d+|^question_complete_\d+"))
+    
+    
     # Set commands once app is running
     app.post_init = set_commands
 
