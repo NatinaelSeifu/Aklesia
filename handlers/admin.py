@@ -236,7 +236,7 @@ async def handle_cancel_avail_callback(update: Update, context: ContextTypes.DEF
         try:
             date = datetime.strptime(date_str, "%Y-%m-%d").date()
             if date < datetime.now().date():
-                return await query.edit_message_text("❌ ያለፉ ቀናትን ማቷረጥ አይቻልም.")
+                return await query.edit_message_text("❌ ያለፉ ቀናትን ማቋረጥ አይቻልም.")
         except ValueError:
             return await query.edit_message_text("❌ የተሳሳተ ቀን. እባኮትን በዚህ መስፈርት ያስገቡ (2017-08-29).")
 
@@ -293,6 +293,8 @@ async def handle_cancel_avail_callback(update: Update, context: ContextTypes.DEF
                     try:
                         await bot.send_message(user_id, message)
                         await asyncio.sleep(3)  # Rate limiting
+                        cursor.execute("INSERT INTO notifications (telegram_id, message, sent_at) VALUES (%s, %s, %s)", (user_id, message, datetime.now()))
+                        conn.commit()
                     except Exception as e:
                         print(f"ማሳወቅ አልተቻለም {user_id}: {e}")
 
