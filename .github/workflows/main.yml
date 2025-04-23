@@ -1,9 +1,4 @@
-# github workflow to build and update docker service
-# This workflow is triggered on push to the main branch
-# and on pull request to the main branch
-# It builds the docker image and pushes it to the docker registry
-# It also deploys the docker image to the server
-
+# This workflow builds a Docker image and deploys it to a Docker Swarm service.
 name: Build and Deploy Docker Service
 on:
   push:
@@ -35,9 +30,12 @@ jobs:
           file: Dockerfile
           push: true
           tags: ${{ vars.DOCKER_USERNAME }}/${{ vars.DOCKER_IMAGE }}:${{ github.sha }}
-
+    
+  deploy:
+    runs-on: self-hosted
+    needs: build
+    steps:
       - name: Deploy to server
-      # uses docker service update
         run: |
             docker service update --image ${{ vars.DOCKER_USERNAME }}/${{ vars.DOCKER_IMAGE }}:${{ github.sha }} ${{ vars.SERVICE_NAME }}
       

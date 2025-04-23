@@ -1,3 +1,4 @@
+
 import os
 from dotenv import load_dotenv
 from telegram import Update, BotCommand,BotCommandScopeChat
@@ -7,7 +8,7 @@ from telegram.ext import (
 )
 
 
-from handlers import register, book,admin
+from handlers import register, book,admin,questions
 
 load_dotenv()
 
@@ -18,22 +19,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def set_commands(app):
     commands = [
-        BotCommand("start", "Start the bot"),
-        BotCommand("register", "Register your account"),
-        BotCommand("book", "Book an appointment"),
-        BotCommand("cancel", "Cancel your appointment"),
-        BotCommand("profile", "View your profile"),
-        BotCommand("mybookings", "View or manage your bookings"),
+        BotCommand("start", "ቦቱን ያስጀምሩ"),
+        BotCommand("register", "ይመዘገቡ"),
+        BotCommand("book", "ቀጠሮ ያስይዙ"),
+#        BotCommand("cancel", "Cancel your appointment"),
+        BotCommand("profile", "መገለጫዎን ይመልከቱ"),
+        BotCommand("mybookings", "ያሎትን ቀጠሮዎች ይመልከቱ"),
+        BotCommand("questions", "ጥያቄ ያቅርቡ"),
     ]
 
-    # Only show /admin for the doctor
+    # Only show /admin for the admin
     if os.getenv("ADMIN_TELEGRAM_ID"):
         await app.bot.set_my_commands(
-            commands + [
-                BotCommand("appointments", "Admin panel (admin only)"),
-                BotCommand("addavailability", "Add available dates (admin only)"),
-                BotCommand("availability", "Remove available dates (admin only)")  
-
+            # if needed the user use commands + []
+            commands = [
+                BotCommand("appointments", "ቀጠሮዎች ይመልከቱ"),
+                BotCommand("addavailability", "የቀን ዝርዝር ያክሉ"),
+                BotCommand("availability", "የቀን ዝርዝር ይሰርዙ"),  
+                BotCommand("question", "ጥያቄዎች ይመልከቱ"),
             ],
             scope=BotCommandScopeChat(chat_id=int(os.getenv("ADMIN_TELEGRAM_ID")))
         )
@@ -47,6 +50,7 @@ async def set_commands(app):
 def main():
     app = ApplicationBuilder().token(os.getenv("BOT_TOKEN")).build()
 
+    
     # Update the fallbacks to include the new cancel command
     app.add_handler(ConversationHandler(
         entry_points=[CommandHandler("addavailability", admin.handle_add_avail_command)],
@@ -60,6 +64,7 @@ def main():
         ],
     ))
     
+    app.add_handler(questions.questions_conversation)
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("register", register.handle_register))
     app.add_handler(CommandHandler("profile", register.handle_profile))
@@ -76,6 +81,10 @@ def main():
     # Add these new handlers after your existing admin handlers:
     app.add_handler(CommandHandler("availability", admin.handle_cancel_avail_command))
     app.add_handler(CallbackQueryHandler(admin.handle_cancel_avail_callback, pattern=r"^cancel_avail_\d{4}-\d{2}-\d{2}$|^confirm_cancel_\d{4}-\d{2}-\d{2}$|^avail_cancel_back$|^cancel_avail_menu$"))
+    app.add_handler(CommandHandler("question", admin.handle_view_questions))
+    app.add_handler(CallbackQueryHandler(admin.handle_admin_question_callback, pattern=r"^question_cancel_\d+|^question_complete_\d+"))
+    
+    
     # Set commands once app is running
     app.post_init = set_commands
 

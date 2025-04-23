@@ -196,7 +196,7 @@ async def handle_booking_callback(update: Update, context: ContextTypes.DEFAULT_
 
     # Step 3: Cancel booking
     elif data == "cancel_booking":
-        return await query.edit_message_text("❌ Booking cancelled.")
+        return await query.edit_message_text("❌ ቀጠሮ መያዙን አቋርጠዋል.")
 
 async def handle_mybookings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
