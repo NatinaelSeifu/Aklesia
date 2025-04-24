@@ -113,6 +113,8 @@ async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TY
             )
             try:
                 await context.bot.send_message(telegram_id, message)
+                cursor.execute("INSERT INTO notifications (sent_to, message, sent_at) VALUES (%s, %s, %s)", (telegram_id, message, datetime.now()))
+                conn.commit()
             except Exception as e:
                 print(f"Failed to notify user {telegram_id}: {e}")
         return await query.edit_message_text("✅ ቀጠሮውን ሰርዘዋል")
@@ -293,7 +295,7 @@ async def handle_cancel_avail_callback(update: Update, context: ContextTypes.DEF
                     try:
                         await bot.send_message(user_id, message)
                         await asyncio.sleep(3)  # Rate limiting
-                        cursor.execute("INSERT INTO notifications (telegram_id, message, sent_at) VALUES (%s, %s, %s)", (user_id, message, datetime.now()))
+                        cursor.execute("INSERT INTO notifications (sent_to, message, sent_at) VALUES (%s, %s, %s)", (user_id, message, datetime.now()))
                         conn.commit()
                     except Exception as e:
                         print(f"ማሳወቅ አልተቻለም {user_id}: {e}")
