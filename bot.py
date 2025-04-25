@@ -65,7 +65,9 @@ def main():
         ],
     ))
     
+    
     app.add_handler(questions.questions_conversation)
+    app.add_handler(communion.communion_conversation)
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("register", register.handle_register))
     app.add_handler(CommandHandler("profile", register.handle_profile))
