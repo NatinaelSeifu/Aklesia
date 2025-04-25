@@ -123,11 +123,24 @@ async def confirm_communion_date(update: Update, context: ContextTypes.DEFAULT_T
             
         cursor.execute("""
             INSERT INTO communion (user_id, comm_date, status)
-            VALUES (%s, %s, %s)
+            VALUES (%s, %s, %s) returning *
         """, (user[0], comm_date, 'በመጠበቅ'))
-        conn.commit()
+        result= cursor.fetchone()
+        if result:
+            telegram_id = os.getenv("ADMIN_TELEGRAM_ID")
+            #comm_date = result[1]
+            message = (
+                f"✅ የቁርባን ማስታውሻ\n\n"
+                f"ስጋና ደሙን የተቀበሉ ልጆች አሎት. /communions ላይ በመሄድ አይተው ይቀበሉ.\n"
+            )
+            try:
+                await context.bot.send_message(telegram_id, message)
+                cursor.execute("INSERT INTO notifications (sent_to, message, sent_at) VALUES (%s, %s, %s)", (telegram_id, message, datetime.now()))
+                conn.commit()
+            except Exception as e:
+                print(f"Failed to notify user {telegram_id}: {e}")
 
-        await query.edit_message_text("✅ የቆረቡበት ቀን በትክክል ተመዝግቧል። ")
+        await query.edit_message_text("✅ የቆረቡበት ቀን በትክክል ተመዝግቧል። በ ቀሲስ እስኪረጋገጥ ድረስ የተወሰነ ይጠብቁ።")
         return ConversationHandler.END
 
     else:

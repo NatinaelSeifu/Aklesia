@@ -38,6 +38,7 @@ async def set_commands(app):
                 BotCommand("addavailability", "የቀን ዝርዝር ያክሉ"),
                 BotCommand("availability", "የቀን ዝርዝር ይሰርዙ"),  
                 BotCommand("question", "ጥያቄዎች ይመልከቱ"),
+                BotCommand("communions", "ቁርባን"),
             ],
             scope=BotCommandScopeChat(chat_id=int(os.getenv("ADMIN_TELEGRAM_ID")))
         )
@@ -88,6 +89,8 @@ def main():
     app.add_handler(CallbackQueryHandler(admin.handle_admin_question_callback, pattern=r"^question_cancel_\d+|^question_complete_\d+"))
     app.add_handler(CommandHandler("communion", communion.handle_view_communion))
     app.add_handler(CallbackQueryHandler(communion.handle_communion_callback, pattern=r"^view_communion_|^set_communion_"))
+    app.add_handler(CommandHandler("communions", admin.handle_admin_communion))
+    app.add_handler(CallbackQueryHandler(admin.handle_admin_communion_callback, pattern=r"^communion_complete_\d+|^communion_cancel_\d+"))
 
     # Set commands once app is running
     app.post_init = set_commands
