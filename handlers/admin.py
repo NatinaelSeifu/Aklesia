@@ -365,3 +365,66 @@ async def handle_admin_question_callback(update: Update, context: ContextTypes.D
         cursor.execute("UPDATE questions SET status = 'የተሰረዘ' WHERE id = %s", (question_id,))
         conn.commit()
         return await query.edit_message_text("❌ ጥያቄው ተሰረዟል.")
+
+
+# Admin handler for communions
+async def handle_admin_communion(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMIN_ID:
+        return await update.message.reply_text("🚫 ይህን ለመጠቀም አልተፈቀደሎትም.")
+    
+    # lets fetch the names of the users first
+    cursor.execute("""
+        SELECT u.id, u.name, u.email, c.id, c.comm_date, c.status
+        FROM users u
+        JOIN communion c ON u.id = c.user_id
+        WHERE c.status = 'በመጠበቅ'
+        ORDER BY u.name ASC
+    """)
+    users = cursor.fetchall()
+    if not users:
+        return await update.message.reply_text("📭 ምንም የቁርባን የሎትም.")
+    
+    # cursor.execute("""
+    #     SELECT id, comm_date, status
+    #     FROM communion
+    #     WHERE status = 'በመጠበቅ'
+    #     ORDER BY comm_date ASC
+    # """)
+    # communions = cursor.fetchall()
+
+    # if not communions:
+    #     return await update.message.reply_text("📭 ምንም የቁርባን የሎትም.")
+
+    for u_id, name, email, c_id, comm_date, status in users:
+        keyboard = [
+            [InlineKeyboardButton("✅ ተቀበል", callback_data=f"communion_complete_{c_id}"),
+             InlineKeyboardButton("❌ ሰርዝ", callback_data=f"communion_cancel_{c_id}")]
+        ]
+        await update.message.reply_text(
+            f"ስም: {name}\n"
+            f"ክርስትና ስም: {email}\n"
+            f"የቁርባን ቀን፡ {to_ethiopian(comm_date)}\n"
+            f"📌 ሁኔታ: {status.capitalize()}",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+# 🔄 Admin Callback Handler for Communions
+async def handle_admin_communion_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+    admin_id = query.from_user.id
+
+    if admin_id not in ADMIN_ID:
+        return await query.edit_message_text("🚫 ይህን ለመጠቀም አልተፈቀደሎትም.")
+    
+    if data.startswith("communion_complete_"):
+        communion_id = int(data.split("_")[2])
+        cursor.execute("UPDATE communion SET status = 'የተጠናቀቀ', updated_at= %s WHERE id = %s", (datetime.now(),communion_id,))
+        conn.commit()
+        return await query.edit_message_text("✅ የቁርባን ቀን ፀድቋል.")
+    elif data.startswith("communion_cancel_"):
+        communion_id = int(data.split("_")[2])
+        cursor.execute("UPDATE communion SET status = 'የተሰረዘ', updated_at= %s WHERE id = %s", (datetime.now(),communion_id,))
+        conn.commit()
+        return await query.edit_message_text("❌ የቁርባን ቀን ተሰረዟል.")
