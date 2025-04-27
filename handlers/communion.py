@@ -139,7 +139,7 @@ async def confirm_communion_date(update: Update, context: ContextTypes.DEFAULT_T
                 conn.commit()
             except Exception as e:
                 print(f"Failed to notify user {telegram_id}: {e}")
-
+        conn.commit()
         await query.edit_message_text("✅ የቆረቡበት ቀን በትክክል ተመዝግቧል። በ ቀሲስ እስኪረጋገጥ ድረስ የተወሰነ ይጠብቁ።")
         return ConversationHandler.END
 
