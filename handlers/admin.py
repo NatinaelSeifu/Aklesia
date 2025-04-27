@@ -195,7 +195,7 @@ async def handle_cancel_avail_command(update: Update, context: ContextTypes.DEFA
     cursor.execute("""
         SELECT appointment_date, max_slots 
         FROM available_days 
-        WHERE appointment_date >= %s
+        WHERE appointment_date >= %s and status = 'active'
         ORDER BY appointment_date ASC
     """, (datetime.now().date(),))
     
@@ -285,7 +285,7 @@ async def handle_cancel_avail_callback(update: Update, context: ContextTypes.DEF
             )
             
             # Delete availability (will cascade to appointments)
-            cursor.execute("DELETE FROM available_days WHERE appointment_date = %s", (date_str,))
+            cursor.execute("UPDATE available_days SET status = 'canceled' WHERE appointment_date = %s", (date_str,))
             conn.commit()
             
             # Notify affected users

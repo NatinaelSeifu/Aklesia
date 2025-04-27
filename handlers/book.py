@@ -43,8 +43,15 @@ async def handle_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Step 2: Filter default available days: Wednesdays (2) and Fridays (4)
     default_days = [d for d in next_14_days if d.weekday() in [2, 4]]
 
-    # Step 3: Get additional days added by the doctor
-    cursor.execute("SELECT appointment_date FROM available_days WHERE appointment_date >= %s", (today,))
+    for day in default_days:
+        cursor.execute("""
+            INSERT INTO available_days (appointment_date, max_slots, status)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (appointment_date) DO NOTHING
+        """, (day, 15, 'active'))
+    conn.commit()
+    # Step 3: Check for added days
+    cursor.execute("SELECT appointment_date FROM available_days WHERE appointment_date >= %s AND status = 'active'", (today,))
     added_days = [row[0] for row in cursor.fetchall()]
 
     # Step 4: Merge and deduplicate
@@ -52,7 +59,7 @@ async def handle_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Step 5: Filter out fully booked days
     valid_days = []
-    for day in combined_days:
+    for day in added_days:
         cursor.execute("SELECT COUNT(*) FROM appointments WHERE appointment_date = %s", (day,))
         booked = cursor.fetchone()[0]
 
