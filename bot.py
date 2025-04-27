@@ -8,7 +8,7 @@ from telegram.ext import (
 )
 
 
-from handlers import register, book,admin,questions
+from handlers import register, book, admin, questions, communion
 
 load_dotenv()
 
@@ -25,7 +25,8 @@ async def set_commands(app):
 #        BotCommand("cancel", "Cancel your appointment"),
         BotCommand("profile", "መገለጫዎን ይመልከቱ"),
         BotCommand("mybookings", "ያሎትን ቀጠሮዎች ይመልከቱ"),
-        BotCommand("questions", "ጥያቄ ያቅርቡ"),
+        BotCommand("communion", "ቁርባን"),
+        BotCommand("questions", "ጥያቄ ወይም አስተያየት ያቅርቡ"),
     ]
 
     # Only show /admin for the admin
@@ -37,6 +38,7 @@ async def set_commands(app):
                 BotCommand("addavailability", "የቀን ዝርዝር ያክሉ"),
                 BotCommand("availability", "የቀን ዝርዝር ይሰርዙ"),  
                 BotCommand("question", "ጥያቄዎች ይመልከቱ"),
+                BotCommand("communions", "ቁርባን"),
             ],
             scope=BotCommandScopeChat(chat_id=int(os.getenv("ADMIN_TELEGRAM_ID")))
         )
@@ -64,7 +66,9 @@ def main():
         ],
     ))
     
+    
     app.add_handler(questions.questions_conversation)
+    app.add_handler(communion.communion_conversation)
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("register", register.handle_register))
     app.add_handler(CommandHandler("profile", register.handle_profile))
@@ -83,8 +87,11 @@ def main():
     app.add_handler(CallbackQueryHandler(admin.handle_cancel_avail_callback, pattern=r"^cancel_avail_\d{4}-\d{2}-\d{2}$|^confirm_cancel_\d{4}-\d{2}-\d{2}$|^avail_cancel_back$|^cancel_avail_menu$"))
     app.add_handler(CommandHandler("question", admin.handle_view_questions))
     app.add_handler(CallbackQueryHandler(admin.handle_admin_question_callback, pattern=r"^question_cancel_\d+|^question_complete_\d+"))
-    
-    
+    app.add_handler(CommandHandler("communion", communion.handle_view_communion))
+    app.add_handler(CallbackQueryHandler(communion.handle_communion_callback, pattern=r"^view_communion_|^set_communion_"))
+    app.add_handler(CommandHandler("communions", admin.handle_admin_communion))
+    app.add_handler(CallbackQueryHandler(admin.handle_admin_communion_callback, pattern=r"^communion_complete_\d+|^communion_cancel_\d+"))
+
     # Set commands once app is running
     app.post_init = set_commands
 
