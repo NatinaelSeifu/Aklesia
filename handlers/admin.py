@@ -381,6 +381,7 @@ async def handle_admin_communion(update: Update, context: ContextTypes.DEFAULT_T
         ORDER BY u.name ASC
     """)
     users = cursor.fetchall()
+    conn.commit()
     if not users:
         return await update.message.reply_text("📭 ምንም የቁርባን የሎትም.")
     
