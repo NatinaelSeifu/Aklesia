@@ -55,7 +55,7 @@ async def handle_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     added_days = [row[0] for row in cursor.fetchall()]
 
     # Step 4: Merge and deduplicate
-    combined_days = sorted(set(default_days + added_days))
+    #combined_days = sorted(set(default_days + added_days))
 
     # Step 5: Filter out fully booked days
     valid_days = []
