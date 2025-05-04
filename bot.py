@@ -12,6 +12,9 @@ from handlers import register, book, admin, questions, communion
 
 load_dotenv()
 
+ADMIN_IDS = os.getenv("ADMIN_TELEGRAM_ID", "")
+ADMIN_ID = [int(id.strip()) for id in ADMIN_IDS.split(",") if id.strip().isdigit()]
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "👋 እንኳን ወደ የቀሲስ ጥላሁን ጉደታ የንስሐ ልጆች አቅሌስያ መጡ!\nእባክዎ ለመጀመር /register የሚለውን በመጫን አካውንት ይክፈቱ." #or /book to schedule an appointment.
@@ -30,18 +33,19 @@ async def set_commands(app):
     ]
 
     # Only show /admin for the admin
-    if os.getenv("ADMIN_TELEGRAM_ID"):
-        await app.bot.set_my_commands(
-            # if needed the user use commands + []
-            commands = [
-                BotCommand("appointments", "ቀጠሮዎች ይመልከቱ"),
-                BotCommand("addavailability", "የቀን ዝርዝር ያክሉ"),
-                BotCommand("availability", "የቀን ዝርዝር ይሰርዙ"),  
-                BotCommand("question", "ጥያቄዎች ይመልከቱ"),
-                BotCommand("communions", "ቁርባን"),
-            ],
-            scope=BotCommandScopeChat(chat_id=int(os.getenv("ADMIN_TELEGRAM_ID")))
-        )
+    if ADMIN_ID:
+        for admin_id in ADMIN_ID:
+            await app.bot.set_my_commands(
+                # if needed the user use commands + []
+                commands = [
+                    BotCommand("appointments", "ቀጠሮዎች ይመልከቱ"),
+                    BotCommand("addavailability", "የቀን ዝርዝር ያክሉ"),
+                    BotCommand("availability", "የቀን ዝርዝር ይሰርዙ"),  
+                    BotCommand("question", "ጥያቄዎች ይመልከቱ"),
+                    BotCommand("communions", "ቁርባን"),
+                ],
+                scope=BotCommandScopeChat(chat_id=admin_id)
+            )
 
     
     await app.bot.set_my_commands(commands)  # For everyone else
