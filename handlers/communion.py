@@ -6,6 +6,10 @@ from db import conn, cursor
 from dotenv import load_dotenv
 from utils.ethiopian_calendar import ethiopian_day_name, to_ethiopian, format_ethiopian_date, ethiopian_to_gregorian
 
+
+ADMIN_IDS = os.getenv("ADMIN_TELEGRAM_ID", "")
+ADMIN_ID = [int(id.strip()) for id in ADMIN_IDS.split(",") if id.strip().isdigit()]
+
 SET_COMMUNION_DATE, CONFIRM_COMMUNION = range(2)
 
 
@@ -127,15 +131,15 @@ async def confirm_communion_date(update: Update, context: ContextTypes.DEFAULT_T
         """, (user[0], comm_date, 'በመጠበቅ'))
         result= cursor.fetchone()
         if result:
-            telegram_id = os.getenv("ADMIN_TELEGRAM_ID")
+            telegram_id = [first_admin for first_admin in ADMIN_ID]
             #comm_date = result[1]
             message = (
                 f"✅ የቁርባን ማስታውሻ\n\n"
                 f"ስጋና ደሙን የተቀበሉ ልጆች አሎት. /communions ላይ በመሄድ አይተው ይቀበሉ.\n"
             )
             try:
-                await context.bot.send_message(telegram_id, message)
-                cursor.execute("INSERT INTO notifications (sent_to, message, sent_at) VALUES (%s, %s, %s)", (telegram_id, message, datetime.now()))
+                await context.bot.send_message(telegram_id[0], message)
+                cursor.execute("INSERT INTO notifications (sent_to, message, sent_at) VALUES (%s, %s, %s)", (telegram_id[0], message, datetime.now()))
                 conn.commit()
             except Exception as e:
                 print(f"Failed to notify user {telegram_id}: {e}")
