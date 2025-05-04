@@ -22,10 +22,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def set_commands(app):
     commands = [
-        BotCommand("start", "ቦቱን ያስጀምሩ"),
         BotCommand("register", "ይመዘገቡ"),
         BotCommand("book", "ቀጠሮ ያስይዙ"),
-#        BotCommand("cancel", "Cancel your appointment"),
         BotCommand("profile", "መገለጫዎን ይመልከቱ"),
         BotCommand("mybookings", "ያሎትን ቀጠሮዎች ይመልከቱ"),
         BotCommand("communion", "ቁርባን"),
