@@ -216,14 +216,20 @@ async def handle_mybookings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cursor.execute("""
         SELECT id, appointment_date FROM appointments 
         WHERE user_id = %s AND status = 'በመጠበቅ'
-        ORDER BY appointment_date ASC
+        ORDER BY appointment_date DESC
     """, (user[0],))
-    appointments = cursor.fetchall()
+    appointments = cursor.fetchone()
 
     if not appointments:
         return await update.message.reply_text("📭 ምንም ቀጠሮ የሎትም.")
 
-    for appt_id, appt_date in appointments:
+    appt_id, appt_date = appointments
+        # check if date is passed
+    if appt_date < datetime.now().date():
+        await update.message.reply_text(
+            f"❌ ያለፈ ቀን ቀጠሮ: {ethiopian_day_name(appt_date)} {format_ethiopian_date(appt_date)}\n አዲስ ለማስያዝ እባኮትን /book ይጫኑ"
+        )
+    else:
         can_change = datetime.combine(appt_date, datetime.min.time()) - datetime.now() > timedelta(hours=24)
         keyboard = []
         if can_change:
@@ -316,13 +322,19 @@ async def handle_mybookings_callback(update: Update, context: ContextTypes.DEFAU
     # Step 2: Filter default available days: Wednesdays (2) and Fridays (4)
         default_days = [d for d in next_14_days if d.weekday() in [2, 4]]
 
-        cursor.execute("SELECT appointment_date FROM available_days WHERE appointment_date >= %s", (today,))
+        for day in default_days:
+            cursor.execute("""
+                INSERT INTO available_days (appointment_date, max_slots, status)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (appointment_date) DO NOTHING
+            """, (day, 15, 'active'))
+        conn.commit()
+        # Step 3: Check for added days
+        cursor.execute("SELECT appointment_date FROM available_days WHERE appointment_date >= %s AND status = 'active'", (today,))
         added_days = [row[0] for row in cursor.fetchall()]
-        # Merge and deduplicate
-        combined_days = sorted(set(default_days + added_days))
 
         valid_days = []
-        for day in combined_days:
+        for day in added_days:
             cursor.execute("SELECT COUNT(*) FROM appointments WHERE appointment_date = %s", (day,))
             booked = cursor.fetchone()[0]
 
