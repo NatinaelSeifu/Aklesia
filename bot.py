@@ -6,9 +6,9 @@ from telegram.ext import (
     ApplicationBuilder, CommandHandler, ContextTypes,
     CallbackQueryHandler, MessageHandler, filters,ConversationHandler
 )
+import asyncio
 
-
-from handlers import register, book, admin, questions, communion
+from handlers import register, book, admin, questions, communion, scheduler
 
 load_dotenv()
 
@@ -49,9 +49,12 @@ async def set_commands(app):
     await app.bot.set_my_commands(commands)  # For everyone else
     print("✅ Commands set successfully.")
     
-
+async def post_init(app):
+    await set_commands(app)
+    scheduler.start_scheduler()
 
 def main():
+    
     app = ApplicationBuilder().token(os.getenv("BOT_TOKEN")).build()
 
     
@@ -95,7 +98,7 @@ def main():
     app.add_handler(CallbackQueryHandler(admin.handle_admin_communion_callback, pattern=r"^communion_complete_\d+|^communion_cancel_\d+"))
 
     # Set commands once app is running
-    app.post_init = set_commands
+    app.post_init = post_init
 
     print("🤖 Bot is running...")
     app.run_polling()

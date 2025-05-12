@@ -7,15 +7,6 @@ from datetime import datetime, timedelta
 from utils.ethiopian_calendar import ethiopian_day_name, to_ethiopian, format_ethiopian_date
 
 
-# AMHARIC_DAYS = {
-#     0: "ሰኞ",    # Monday
-#     1: "ማክሰኞ",  # Tuesday
-#     2: "ረቡዕ",    # Wednesday
-#     3: "ሐሙስ",    # Thursday
-#     4: "ዓርብ",    # Friday
-#     5: "ቅዳሜ",    # Saturday
-#     6: "እሑድ"     # Sunday
-# }
 
 # /book command handler
 async def handle_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -38,18 +29,18 @@ async def handle_booking(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("📌ከዚህ በፊት የተዘጋጀ ቀጠሮ አሎት. በዚህ ማየት ይችላሉ /mybookings")
 
     # Step 1: Get next 14 days
-    next_14_days = [today + timedelta(days=i) for i in range(14)]
+    # next_14_days = [today + timedelta(days=i) for i in range(14)]
 
-    # Step 2: Filter default available days: Wednesdays (2) and Fridays (4)
-    default_days = [d for d in next_14_days if d.weekday() in [2, 4]]
+    # # Step 2: Filter default available days: Wednesdays (2) and Fridays (4)
+    # default_days = [d for d in next_14_days if d.weekday() in [2, 4]]
 
-    for day in default_days:
-        cursor.execute("""
-            INSERT INTO available_days (appointment_date, max_slots, status)
-            VALUES (%s, %s, %s)
-            ON CONFLICT (appointment_date) DO NOTHING
-        """, (day, 15, 'active'))
-    conn.commit()
+    # for day in default_days:
+    #     cursor.execute("""
+    #         INSERT INTO available_days (appointment_date, max_slots, status)
+    #         VALUES (%s, %s, %s)
+    #         ON CONFLICT (appointment_date) DO NOTHING
+    #     """, (day, 15, 'active'))
+    # conn.commit()
     # Step 3: Check for added days
     cursor.execute("SELECT appointment_date FROM available_days WHERE appointment_date >= %s AND status = 'active'", (today,))
     added_days = [row[0] for row in cursor.fetchall()]
@@ -320,15 +311,15 @@ async def handle_mybookings_callback(update: Update, context: ContextTypes.DEFAU
         next_14_days = [today + timedelta(days=i) for i in range(14)]
 
     # Step 2: Filter default available days: Wednesdays (2) and Fridays (4)
-        default_days = [d for d in next_14_days if d.weekday() in [2, 4]]
+        # default_days = [d for d in next_14_days if d.weekday() in [2, 4]]
 
-        for day in default_days:
-            cursor.execute("""
-                INSERT INTO available_days (appointment_date, max_slots, status)
-                VALUES (%s, %s, %s)
-                ON CONFLICT (appointment_date) DO NOTHING
-            """, (day, 15, 'active'))
-        conn.commit()
+        # for day in default_days:
+        #     cursor.execute("""
+        #         INSERT INTO available_days (appointment_date, max_slots, status)
+        #         VALUES (%s, %s, %s)
+        #         ON CONFLICT (appointment_date) DO NOTHING
+        #     """, (day, 15, 'active'))
+        # conn.commit()
         # Step 3: Check for added days
         cursor.execute("SELECT appointment_date FROM available_days WHERE appointment_date >= %s AND status = 'active'", (today,))
         added_days = [row[0] for row in cursor.fetchall()]
