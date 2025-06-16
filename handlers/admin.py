@@ -5,6 +5,12 @@ import os, asyncio
 from datetime import datetime
 from db import conn, cursor
 from dotenv import load_dotenv
+import csv
+from io import StringIO
+#from io import BytesIO
+#import pandas as pd
+
+
 from utils.ethiopian_calendar import to_ethiopian, ethiopian_day_name,ethiopian_to_gregorian
 #from handlers.book import AMHARIC_DAYS
 
@@ -122,7 +128,8 @@ async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TY
 # 📅 Add Availability
 async def handle_add_avail_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMIN_ID:
-        return await update.message.reply_text("🚫 ያልተፈቀደ.")
+        await update.message.reply_text("🚫 ያልተፈቀደ.")
+        return ConversationHandler.END
     
     context.user_data["avail_state"] = "awaiting_date"
     await update.message.reply_text("📅 እባኮትን የሚገኙበትን ቀን ያስፍሩ (YYYY-MM-DD):")
@@ -188,8 +195,7 @@ async def cancel_availability_creation(update: Update, context: ContextTypes.DEF
 # Cancel Existing Availabilities
 async def handle_cancel_avail_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id not in ADMIN_ID:
-        if update.callback_query:
-            await update.callback_query.answer("🚫 ያልተፈቀደ.")
+        await update.message.reply_text("🚫 ይህን ለመጠቀም አልተፈቀደሎትም.")
         return
     
     cursor.execute("""
@@ -429,3 +435,99 @@ async def handle_admin_communion_callback(update: Update, context: ContextTypes.
         cursor.execute("UPDATE communion SET status = 'የተሰረዘ', updated_at= %s WHERE id = %s", (datetime.now(),communion_id,))
         conn.commit()
         return await query.edit_message_text("❌ የቁርባን ቀን ተሰረዟል.")
+
+# async def handle_admin_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     if update.effective_user.id not in ADMIN_ID:
+#         return await update.message.reply_text("🚫 ይህን ለመጠቀም አልተፈቀደሎትም.")
+    
+#     try:
+#         # Fetch all users from the database
+#         cursor.execute("""
+#             SELECT telegram_id, name, email, phone, marital_status, children, joined_on
+#             FROM users
+#             ORDER BY created_at DESC
+#         """)
+#         users = cursor.fetchall()
+        
+#         if not users:
+#             return await update.message.reply_text("📭 ምንም ተጠቃሚ የለም.")
+        
+#         # Create a DataFrame
+#         df = pd.DataFrame(users, columns=[
+#             "ID", 
+#             "ሙሉ ስም", 
+#             "ክርስትና ስም", 
+#             "ስልክ ቁጥር", 
+#             "የትዳር ሁኔታ",
+#             "የልጆች ክርስትና ስም",
+#             "የአባልነት ቀን"
+#         ])
+        
+#         # Format the date column
+#         df['የአባልነት ቀን'] = df['የአባልነት ቀን'].dt.strftime('%Y-%m-%d %H:%M:%S')
+        
+#         # Create Excel file in memory
+#         output = BytesIO()
+#         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+#             df.to_excel(writer, index=False, sheet_name='Users')
+            
+#             # Auto-adjust columns' width
+#             worksheet = writer.sheets['Users']
+#             for i, col in enumerate(df.columns):
+#                 max_len = max(df[col].astype(str).map(len).max(), len(col)) + 2
+#                 worksheet.set_column(i, i, max_len)
+        
+#         output.seek(0)
+        
+#         # Send the Excel file
+#         await context.bot.send_document(
+#             chat_id=update.effective_chat.id,
+#             document=output,
+#             filename=f"users_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+#             caption="📊 የክርስትና ልጆች ዝርዝር"
+#         )
+        
+#     except Exception as e:
+#         print(f"Error generating users report: {e}")
+#         await update.message.reply_text("❌ ማግኘት አልተቻለም. እባክዎ ቆይተው ይሞክሩ.")
+
+async def handle_admin_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMIN_ID:
+        return await update.message.reply_text("🚫 ይህን ለመጠቀም አልተፈቀደሎትም.")
+    
+    try:
+        cursor.execute("SELECT  telegram_id, name, email, phone, marital_status, children, joined_on " \
+        "FROM users ORDER BY created_at DESC")
+        users = cursor.fetchall()
+        
+        if not users:
+            return await update.message.reply_text("📭 ምንም ተጠቃሚ የለም.")
+
+        # Generate CSV in memory
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Write headers
+        writer.writerow([
+            "ID", "ሙሉ ስም", "ክርስትና ስም", 
+            "ስልክ ቁጥር", "የትዳር ሁኔታ",
+            "የልጆች ክርስትና ስም", "የአባልነት ቀን"
+        ])
+        
+        # Write data
+        for user in users:
+            writer.writerow(user)
+        
+        output.seek(0)
+        
+        # Send as a file (Telegram will show it as a downloadable document)
+        await context.bot.send_document(
+            chat_id=update.effective_chat.id,
+            document=output,
+            filename=f"users_{datetime.now().strftime('%Y%m%d')}.csv",
+            caption="📊 የክርስትና ልጆች ዝርዝር"
+        )
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        await update.message.reply_text("❌ ማግኘት አልተቻለም. ድጋሚ ይሞክሩ")

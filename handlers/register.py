@@ -46,6 +46,31 @@ async def handle_register(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Conversation handler
 async def handle_register_convo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Handle callback queries first
+    if update.callback_query:
+        query = update.callback_query
+        await query.answer()
+        user_id = query.from_user.id
+        text = query.data  # This will be "married" or "single"
+        
+        # For marital status callback
+        context.user_data['marital_status'] = text
+        
+        if text == 'ያገባ':
+            context.user_data['register_step'] = 'children'
+            await query.edit_message_text("የልጆችዎ ስሞች ያስገቡ (በነጠላ ሰረዝ ለምሳሌ: ማርያም፣ ዮሐንስ)")
+        else:
+            context.user_data['children'] = None
+            await save_user_profile(update, context)
+            # send confirmation message
+            await query.edit_message_text("✅ ምዝገባ ተጠናቋል! /book የሚለውን በመንካት ቀጠሮ ማካሄድ ይችላሉ. ወይም /profile የሚለውን በመጫን መገለጫዎን ይመልከቱ.")
+        return  # Important: return after handling callback to prevent further processing
+    
+    # Only proceed with message handling if there's actually a message
+    if not update.message or not update.message.text:
+        return
+    
+    # Handle regular message updates
     user_id = update.effective_user.id
     step = context.user_data.get('register_step')
     text = update.message.text.strip()
@@ -97,11 +122,16 @@ async def handle_register_convo(update: Update, context: ContextTypes.DEFAULT_TY
             joined_on = datetime.strptime(text, "%Y-%m-%d")
             if context.user_data.get('is_new_user'):
                 context.user_data['joined_on'] = joined_on
-                await save_user_profile(update, context)
-                logger.info(f"User {user_id} completed registration")
-                return await update.message.reply_text("✅ ምዝገባ ተጠናቋል! /book የሚለውን በመንካት ቀጠሮ ማካሄድ ይችላሉ. ወይም /profile የሚለውን በመጫን መገለጫዎን ይመልከቱ.") #Registration complete! You can now book an appointment using /book or view your profile using /profile.
+                context.user_data['register_step'] = 'marital_status'
+                keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("ያገባሁ", callback_data="ያገባ")],
+                    [InlineKeyboardButton("ያገባሁ አይደለሁም", callback_data="ያላገባ")]
+                ])
+                await update.message.reply_text("የጋብቻ ሁኔታ?", reply_markup=keyboard)
+                return
             else:
-                cursor.execute("UPDATE users SET joined_on = %s, updated_at = NOW() WHERE telegram_id = %s", (joined_on, user_id))
+                cursor.execute("UPDATE users SET joined_on = %s, updated_at = NOW() WHERE telegram_id = %s", 
+                            (joined_on, user_id))
                 conn.commit()
                 context.user_data.clear()
                 logger.info(f"User {user_id} updated joined_on")
@@ -109,8 +139,19 @@ async def handle_register_convo(update: Update, context: ContextTypes.DEFAULT_TY
         except ValueError:
             logger.warning(f"User {user_id} provided invalid date: {text}")
             return await update.message.reply_text("⚠️ የተሳሳተ ቀን አስገብተዋል. እባኮትን በዚህ መንገድ ያስተካክሉ: 2027-08-25")
+    
+    elif step == 'children':
+        if context.user_data.get('is_new_user'):
+            context.user_data['children'] = text
+            await save_user_profile(update, context)
+            await update.message.reply_text("✅ ምዝገባ ተጠናቋል! /book የሚለውን በመንካት ቀጠሮ ማካሄድ ይችላሉ. ወይም /profile የሚለውን በመጫን መገለጫዎን ይመልከቱ.")
+        else:
+            cursor.execute("UPDATE users SET children = %s, updated_at = NOW() WHERE telegram_id = %s", (text, user_id))
+            conn.commit()
+            context.user_data.clear()
+            logger.info(f"User {user_id} updated children")
+            return await update.message.reply_text("👶 የልጆች ክርስትና ስም ተለውጧል.")
 
-# Inline keyboard handler
 async def handle_edit_profile_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -133,6 +174,16 @@ async def handle_edit_profile_callback(update: Update, context: ContextTypes.DEF
     elif data == 'edit_joined_on':
         context.user_data['register_step'] = 'joined_on'
         await query.edit_message_text("📅 የክርስትና ልጅ የሆኑበት ቀን (ምሳሌ 2016-08-26):")
+    # elif data == 'edit_marital_status':
+    #     keyboard = InlineKeyboardMarkup([
+    #         [InlineKeyboardButton("ያገባሁ", callback_data="married")],
+    #         [InlineKeyboardButton("ያገባሁ አይደለሁም", callback_data="single")]
+    #     ])
+    #     await query.edit_message_text("የጋብቻ ሁኔታ?", reply_markup=keyboard)
+    elif data == 'edit_children':
+        context.user_data['register_step'] = 'children'
+        await query.edit_message_text("የልጆችዎ ክርስትና ስሞች ያስገቡ (በነጠላ ሰረዝ ለምሳሌ: ማርያም፣ ዮሐንስ)")
+
     elif data == 'delete_profile':
         keyboard = InlineKeyboardMarkup([
             [
@@ -174,13 +225,15 @@ async def save_user_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     phone = context.user_data['phone']
     email = context.user_data['email']
     joined_on = context.user_data['joined_on']
+    marital_status = context.user_data['marital_status']
+    children = context.user_data.get('children')
 
     logger.info(f"Saving profile for user {telegram_id}")
 
     cursor.execute("""
-        INSERT INTO users (telegram_id, name, phone, email, joined_on, created_at, updated_at)
-        VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
-    """, (telegram_id, name, phone, email, joined_on))
+        INSERT INTO users (telegram_id, name, phone, email, joined_on, marital_status, children, created_at, updated_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+    """, (telegram_id, name, phone, email, joined_on, marital_status, children))
 
     conn.commit()
     context.user_data.clear()
@@ -190,20 +243,22 @@ async def handle_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     logger.info(f"User {telegram_id} requested profile view")
 
-    cursor.execute("SELECT name, phone, email, joined_on FROM users WHERE telegram_id = %s", (telegram_id,))
+    cursor.execute("SELECT name, phone, email, joined_on, marital_status, children FROM users WHERE telegram_id = %s", (telegram_id,))
     user = cursor.fetchone()
 
     if user:
-        name, phone, email, joined_on = user
+        name, phone, email, joined_on, m_status, children = user
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("ስም ለማስተካከል", callback_data='edit_name')],
             [InlineKeyboardButton("ስልክ ለማስተካከል", callback_data='edit_phone')],
             [InlineKeyboardButton("ክርስትና ስም ለማስተካከል", callback_data='edit_email')],
             [InlineKeyboardButton("የአባልነት ቀን ለማስተካከል", callback_data='edit_joined_on')],
+            #[InlineKeyboardButton("የጋብቻ ሁኔታ ለማስተካከል", callback_data='edit_marital_status')],
+            [InlineKeyboardButton("የልጆች ስም ለማስተካከል", callback_data='edit_children')],
             [InlineKeyboardButton("🗑️ አካውንት ለማጥፋት", callback_data='delete_profile')],
         ])
         await update.message.reply_text(
-            f"👤 የእርስዎ መገለጫ:\n\n👤 ስም: {name}\n📞 ስልክ: {phone}\n📧 ክርስትና ስም: {email}\n📅 የአባልነት ቀን: {joined_on.strftime('%Y-%m-%d') if joined_on else 'N/A'}",
+            f"👤 የእርስዎ መገለጫ:\n\n👤 ስም: {name}\n📞 ስልክ: {phone}\n📧 ክርስትና ስም: {email}\n📅 የአባልነት ቀን: {joined_on.strftime('%Y-%m-%d') if joined_on else 'N/A'}\n  {"👶 የልጆች ክርስትና ስም፡ \n" + children if children else ''}",
             reply_markup=keyboard
         )
     else:
