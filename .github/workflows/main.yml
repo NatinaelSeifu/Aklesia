@@ -44,7 +44,6 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.SSHUSER }}
           key: ${{ secrets.KEY }}
-          port: ${{ secrets.PORT }}
           script: 
             docker pull ${{ vars.DOCKER_USERNAME }}/${{ vars.DOCKER_IMAGE }}:${{ github.sha }}
             docker service update --image ${{ vars.DOCKER_USERNAME }}/${{ vars.DOCKER_IMAGE }}:${{ github.sha }} ${{ vars.SERVICE_NAME }}
