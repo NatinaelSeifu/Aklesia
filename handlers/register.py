@@ -5,6 +5,7 @@ from telegram.ext import ContextTypes
 from db import cursor, conn
 import re
 from datetime import datetime
+import uuid
 
 # Configure logger
 import logging
@@ -227,13 +228,16 @@ async def save_user_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     joined_on = context.user_data['joined_on']
     marital_status = context.user_data['marital_status']
     children = context.user_data.get('children')
-
+    # set id uuid
+    
+    user_id = str(uuid.uuid4())
+    
     logger.info(f"Saving profile for user {telegram_id}")
 
     cursor.execute("""
-        INSERT INTO users (telegram_id, name, phone, email, joined_on, marital_status, children, created_at, updated_at)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
-    """, (telegram_id, name, phone, email, joined_on, marital_status, children))
+        INSERT INTO users (id,telegram_id, name, phone, email, joined_on, marital_status, children, created_at, updated_at)
+        VALUES (%s,%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+    """, (user_id,telegram_id, name, phone, email, joined_on, marital_status, children))
 
     conn.commit()
     context.user_data.clear()
