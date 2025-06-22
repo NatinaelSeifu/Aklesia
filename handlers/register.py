@@ -199,8 +199,16 @@ async def handle_edit_profile_callback(update: Update, context: ContextTypes.DEF
 
     elif data == 'confirm_delete_yes':
         try:
-            # First delete the user's appointments
-            cursor.execute("DELETE FROM appointments WHERE user_id = %s", (user_id,))
+            # cursor.execute("SELECT id FROM users WHERE telegram_id = %s", (user_id,))
+            # user = cursor.fetchone()
+            
+            # if not user:
+            #     await query.edit_message_text("❌ User not found.")
+            #     return
+            
+            # user_uuid = user[0]
+            # # First delete the user's appointments
+            # cursor.execute("DELETE FROM appointments WHERE user_id = %s", (user_uuid,))
             
             # Then delete the user profile
             cursor.execute("DELETE FROM users WHERE telegram_id = %s", (user_id,))
