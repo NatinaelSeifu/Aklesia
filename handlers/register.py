@@ -168,7 +168,7 @@ async def handle_edit_profile_callback(update: Update, context: ContextTypes.DEF
         await query.edit_message_text("✏️ ሙሉ ስም:")
     elif data == 'edit_phone':
         context.user_data['register_step'] = 'phone'
-        await query.edit_message_text("📞 ስልክ ቁጥር:")
+        await query.edit_message_text("📞 ስልክ ቁጥር: ( ምሳሌ 0911234567)")
     elif data == 'edit_email':
         context.user_data['register_step'] = 'email'
         await query.edit_message_text("📧 ክርስትና ስም:")

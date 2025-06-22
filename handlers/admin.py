@@ -5,7 +5,7 @@ import os, asyncio
 from datetime import datetime
 from db import conn, cursor
 from dotenv import load_dotenv
-import csv
+import csv, uuid
 from io import StringIO
 #from io import BytesIO
 #import pandas as pd
@@ -93,13 +93,13 @@ async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TY
         return await query.edit_message_text("🚫 ያልተፈቀደ.")
 
     if data.startswith("admin_complete_"):
-        appointment_id = int(data.split("_")[2])
+        appointment_id = data.split("_")[2]
         cursor.execute("UPDATE appointments SET status = 'የተጠናቀቀ' WHERE id = %s", (appointment_id,))
         conn.commit()
         return await query.edit_message_text("✅ ቀጠሮው ተካሂዷል.")
 
     elif data.startswith("admin_cancel_"):
-        appointment_id = int(data.split("_")[2])
+        appointment_id = data.split("_")[2]
         cursor.execute("UPDATE appointments SET status = 'የተሰረዘ' WHERE id = %s", (appointment_id,))
         conn.commit()
         # notify user
@@ -170,11 +170,12 @@ async def handle_add_avail_step(update: Update, context: ContextTypes.DEFAULT_TY
 
         slots = int(slots_text)
         avail_date = context.user_data.get("avail_date")
+        appt_id = str(uuid.uuid4())
         cursor.execute("""
-            INSERT INTO available_days (appointment_date, max_slots)
-            VALUES (%s, %s)
+            INSERT INTO available_days (id, appointment_date, max_slots)
+            VALUES (%s,%s, %s)
             ON CONFLICT (appointment_date) DO UPDATE SET max_slots = EXCLUDED.max_slots
-        """, (avail_date, slots))
+        """, (appt_id, avail_date, slots))
         conn.commit()
 
         context.user_data.pop("avail_state", None)
@@ -362,12 +363,12 @@ async def handle_admin_question_callback(update: Update, context: ContextTypes.D
         return await query.edit_message_text("🚫 ይህን ለመጠቀም አልተፈቀደሎትም.")
     
     if data.startswith("question_complete_"):
-        question_id = int(data.split("_")[2])
+        question_id = data.split("_")[2]
         cursor.execute("UPDATE questions SET status = 'የተጠናቀቀ' WHERE id = %s", (question_id,))
         conn.commit()
         return await query.edit_message_text("✅ ጥያቄው ተመልሷል.")
     elif data.startswith("question_cancel_"):
-        question_id = int(data.split("_")[2])
+        question_id = data.split("_")[2]
         cursor.execute("UPDATE questions SET status = 'የተሰረዘ' WHERE id = %s", (question_id,))
         conn.commit()
         return await query.edit_message_text("❌ ጥያቄው ተሰረዟል.")
@@ -426,12 +427,12 @@ async def handle_admin_communion_callback(update: Update, context: ContextTypes.
         return await query.edit_message_text("🚫 ይህን ለመጠቀም አልተፈቀደሎትም.")
     
     if data.startswith("communion_complete_"):
-        communion_id = int(data.split("_")[2])
+        communion_id = data.split("_")[2]
         cursor.execute("UPDATE communion SET status = 'የተጠናቀቀ', updated_at= %s WHERE id = %s", (datetime.now(),communion_id,))
         conn.commit()
         return await query.edit_message_text("✅ የቁርባን ቀን ፀድቋል.")
     elif data.startswith("communion_cancel_"):
-        communion_id = int(data.split("_")[2])
+        communion_id = data.split("_")[2]
         cursor.execute("UPDATE communion SET status = 'የተሰረዘ', updated_at= %s WHERE id = %s", (datetime.now(),communion_id,))
         conn.commit()
         return await query.edit_message_text("❌ የቁርባን ቀን ተሰረዟል.")

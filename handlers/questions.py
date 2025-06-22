@@ -7,7 +7,7 @@ from telegram.ext import (
     CallbackQueryHandler,
     filters,
 )
-import logging
+import logging, uuid
 from db import conn, cursor
 
 from warnings import filterwarnings
@@ -92,7 +92,7 @@ async def handle_action_callback(update: Update, context: ContextTypes.DEFAULT_T
         )
         return ASK_QUESTION
     elif data.startswith("edit_"):
-        question_id = int(data.split("_")[1])
+        question_id = data.split("_")[1]
         try:
             cursor.execute(
                 "SELECT question FROM questions WHERE id = %s AND status = 'በመጠበቅ'",
@@ -122,6 +122,7 @@ async def handle_question_submission(update: Update, context: ContextTypes.DEFAU
     question = update.message.text.strip()
     logger.info(f"New question submitted by {telegram_id}: {question[:30]}...")
 
+    que_id = str(uuid.uuid4())
     if not question:
         await update.message.reply_text(
             "ጥያቄዎ ባዶ መሆን አይችልም። እባክዎ ጥያቄዎን እንደገና ያስገቡ።"
@@ -130,8 +131,8 @@ async def handle_question_submission(update: Update, context: ContextTypes.DEFAU
 
     try:
         cursor.execute(
-            "INSERT INTO questions (telegram_id, question, status) VALUES (%s, %s, 'በመጠበቅ')",
-            (telegram_id, question),
+            "INSERT INTO questions (id, telegram_id, question, status) VALUES (%s, %s, %s, 'በመጠበቅ')",
+            (que_id, telegram_id, question),
         )
         conn.commit()
         await update.message.reply_text(
@@ -190,7 +191,7 @@ questions_conversation = ConversationHandler(
     entry_points=[CommandHandler("questions", handle_questions)],
     states={
         SELECT_ACTION: [
-            CallbackQueryHandler(handle_action_callback, pattern=r"^(new_question|edit_\d+)$")
+            CallbackQueryHandler(handle_action_callback, pattern=r"^(new_question|edit_[a-f0-9-]+)$")
         ],
         ASK_QUESTION: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, handle_question_submission)
