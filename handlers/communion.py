@@ -1,6 +1,6 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes, ConversationHandler, CallbackQueryHandler, MessageHandler, filters
-import os
+import os, uuid
 from datetime import datetime
 from db import conn, cursor
 from dotenv import load_dotenv
@@ -63,7 +63,7 @@ async def handle_communion_callback(update: Update, context: ContextTypes.DEFAUL
 
     elif data.startswith("set_communion_"):
         await query.message.reply_text(
-            "📅 እባክዎን የቆረቡበትን ቀን በዓመት-ወር-ቀን (ዓመት-ወር-ቀን) መልክ ያስገቡ:",
+            "📅 እባክዎን የቆረቡበትን ቀን በዓመት-ወር-ቀን (2017-08-10) መልክ ያስገቡ:",
             reply_markup=ReplyKeyboardRemove()
         )
         return SET_COMMUNION_DATE
@@ -120,15 +120,17 @@ async def confirm_communion_date(update: Update, context: ContextTypes.DEFAULT_T
             WHERE user_id = %s AND comm_date = %s
         """, (user[0], comm_date))
         exists = cursor.fetchone()
+        comm_id= str(uuid.uuid4())
+        notify_id = str(uuid.uuid4())
 
         if exists:
             await update.callback_query.edit_message_text("⚠️ ያስገቡት ቀን አስቀድሞ ተመዝግቧል። እባክዎን በተለየ ቀን ይሞክሩ።")
             return ConversationHandler.END
             
         cursor.execute("""
-            INSERT INTO communion (user_id, comm_date, status)
-            VALUES (%s, %s, %s) returning *
-        """, (user[0], comm_date, 'በመጠበቅ'))
+            INSERT INTO communion (id, user_id, comm_date, status)
+            VALUES (%s, %s, %s, %s) returning *
+        """, (comm_id, user[0], comm_date, 'በመጠበቅ'))
         result= cursor.fetchone()
         if result:
             telegram_id = [first_admin for first_admin in ADMIN_ID]
@@ -139,7 +141,7 @@ async def confirm_communion_date(update: Update, context: ContextTypes.DEFAULT_T
             )
             try:
                 await context.bot.send_message(telegram_id[0], message)
-                cursor.execute("INSERT INTO notifications (sent_to, message, sent_at) VALUES (%s, %s, %s)", (telegram_id[0], message, datetime.now()))
+                cursor.execute("INSERT INTO notifications (id, sent_to, message, sent_at) VALUES (%s, %s, %s, %s)", (notify_id, telegram_id[0], message, datetime.now()))
                 conn.commit()
             except Exception as e:
                 print(f"Failed to notify user {telegram_id}: {e}")

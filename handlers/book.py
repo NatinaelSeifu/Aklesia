@@ -5,7 +5,7 @@ from telegram.ext import ContextTypes
 from db import cursor, conn
 from datetime import datetime, timedelta
 from utils.ethiopian_calendar import ethiopian_day_name, to_ethiopian, format_ethiopian_date
-
+import uuid
 
 
 # /book command handler
@@ -158,12 +158,13 @@ async def handle_booking_callback(update: Update, context: ContextTypes.DEFAULT_
 
         if booked >= max_slots:
             return await query.edit_message_text("🚫 የመረጡት ቀን ሞልቷል፣ እባኮት ሌላ ቀን ይምረጡ.")
-
+        
         # Insert appointment
+        id= str(uuid.uuid4())
         cursor.execute("""
-            INSERT INTO appointments (user_id, appointment_date, status)
-            VALUES (%s, %s, 'በመጠበቅ')
-        """, (user[0], appointment_date))
+            INSERT INTO appointments (id, user_id, appointment_date, status)
+            VALUES (%s,%s, %s, 'በመጠበቅ')
+        """, (id, user[0], appointment_date))
         conn.commit()
 
         return await query.edit_message_text(
@@ -215,6 +216,7 @@ async def handle_mybookings(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("📭 ምንም ቀጠሮ የሎትም.")
 
     appt_id, appt_date = appointments
+    
         # check if date is passed
     if appt_date < datetime.now().date():
         await update.message.reply_text(
@@ -239,9 +241,9 @@ async def handle_mybookings_callback(update: Update, context: ContextTypes.DEFAU
     await query.answer()
     user_id = query.from_user.id
     data = query.data
-
+    
     if data.startswith("cancel_"):
-        appointment_id = int(data.split("_")[1])
+        appointment_id = data.split("_")[1]
         
         # Get appointment date first
         cursor.execute("""
@@ -274,16 +276,8 @@ async def handle_mybookings_callback(update: Update, context: ContextTypes.DEFAU
             reply_markup=InlineKeyboardMarkup(buttons)
         )
         
-    
-        
-        # buttons = [
-        #     [InlineKeyboardButton(day[0].strftime("%A %Y-%m-%d"), callback_data=f"confirm_change_{appointment_id}_{day[0]}")]
-        #     for day in days
-        # ]
-
-        # await query.edit_message_text("🔄 Select a new date:", reply_markup=InlineKeyboardMarkup(buttons))
     elif data.startswith("change_"):
-        appointment_id = int(data.split("_")[1])
+        appointment_id = data.split("_")[1]
         
         # Get appointment date first
         cursor.execute("""
@@ -308,19 +302,8 @@ async def handle_mybookings_callback(update: Update, context: ContextTypes.DEFAU
 
         # Get valid change options
         today = datetime.now().date()
-        next_14_days = [today + timedelta(days=i) for i in range(14)]
+        #next_14_days = [today + timedelta(days=i) for i in range(14)]
 
-    # Step 2: Filter default available days: Wednesdays (2) and Fridays (4)
-        # default_days = [d for d in next_14_days if d.weekday() in [2, 4]]
-
-        # for day in default_days:
-        #     cursor.execute("""
-        #         INSERT INTO available_days (appointment_date, max_slots, status)
-        #         VALUES (%s, %s, %s)
-        #         ON CONFLICT (appointment_date) DO NOTHING
-        #     """, (day, 15, 'active'))
-        # conn.commit()
-        # Step 3: Check for added days
         cursor.execute("SELECT appointment_date FROM available_days WHERE appointment_date >= %s AND status = 'active'", (today,))
         added_days = [row[0] for row in cursor.fetchall()]
 
@@ -346,7 +329,7 @@ async def handle_mybookings_callback(update: Update, context: ContextTypes.DEFAU
         await query.edit_message_text("⚠️ከ 24 ሰአት በታች ለሚደረጉ ቅያሪዎች ማቋረጥ እንዲሁም መቀየር አይቻልም \n🔄 አዲስ ቀን ይምረጡ:", reply_markup=InlineKeyboardMarkup(buttons))
 
     elif data.startswith("confirm_cancell_"):
-        appointment_id = int(data.split("_")[2])
+        appointment_id = data.split("_")[2]
         cursor.execute("DELETE FROM appointments WHERE id = %s", (appointment_id,))
         conn.commit()
         await query.edit_message_text("✅ ቀጠሮዎን ሰርዘዋል።")
@@ -357,7 +340,7 @@ async def handle_mybookings_callback(update: Update, context: ContextTypes.DEFAU
 
     elif data.startswith("confirm_change_"):
         _, appointment_id, new_date_str = data.rsplit("_", 2)
-        appointment_id = int(appointment_id)
+        appointment_id = appointment_id
         new_date = datetime.strptime(new_date_str, "%Y-%m-%d").date()
 
         # Final check if slot is still open

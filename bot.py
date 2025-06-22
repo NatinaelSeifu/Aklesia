@@ -84,7 +84,7 @@ def main():
     app.add_handler(CommandHandler("book", book.handle_booking))
     app.add_handler(CallbackQueryHandler(book.handle_booking_callback, pattern=r"^book_|^confirm_booking$|^cancel_booking$"))    
     app.add_handler(CommandHandler("mybookings", book.handle_mybookings))
-    app.add_handler(CallbackQueryHandler(book.handle_mybookings_callback, pattern=r"^change_\d+$|^abort_cancel_|^confirm_cancell_|^cancel_\d+$|^confirm_change_\d+_\d{4}-\d{2}-\d{2}$"))
+    app.add_handler(CallbackQueryHandler(book.handle_mybookings_callback,pattern=r"^change_[a-f0-9-]+$|^abort_cancel_|^confirm_cancell_[a-f0-9-]+$|^cancel_[a-f0-9-]+$|^confirm_change_[a-f0-9-]+_\d{4}-\d{2}-\d{2}$"))
     app.add_handler(CallbackQueryHandler(admin.handle_admin_callback, pattern="^(view_schedule|add_day)"))
     app.add_handler(CommandHandler("appointments", admin.handle_admin_appointments))
     app.add_handler(CallbackQueryHandler(admin.handle_admin_callback, pattern="^(admin_complete_|admin_cancel_)"))
@@ -92,11 +92,11 @@ def main():
     app.add_handler(CommandHandler("availability", admin.handle_cancel_avail_command))
     app.add_handler(CallbackQueryHandler(admin.handle_cancel_avail_callback, pattern=r"^cancel_avail_\d{4}-\d{2}-\d{2}$|^confirm_cancel_\d{4}-\d{2}-\d{2}$|^avail_cancel_back$|^cancel_avail_menu$"))
     app.add_handler(CommandHandler("question", admin.handle_view_questions))
-    app.add_handler(CallbackQueryHandler(admin.handle_admin_question_callback, pattern=r"^question_cancel_\d+|^question_complete_\d+"))
+    app.add_handler(CallbackQueryHandler(admin.handle_admin_question_callback, pattern=r"^question_cancel_[a-f0-9-]+|^question_complete_[a-f0-9-]+"))
     app.add_handler(CommandHandler("communion", communion.handle_view_communion))
     app.add_handler(CallbackQueryHandler(communion.handle_communion_callback, pattern=r"^view_communion_|^set_communion_"))
     app.add_handler(CommandHandler("communions", admin.handle_admin_communion))
-    app.add_handler(CallbackQueryHandler(admin.handle_admin_communion_callback, pattern=r"^communion_complete_\d+|^communion_cancel_\d+"))
+    app.add_handler(CallbackQueryHandler(admin.handle_admin_communion_callback, pattern=r"^communion_complete_[a-f0-9-]+|^communion_cancel_[a-f0-9-]+"))
 
     # Set commands once app is running
     app.post_init = post_init
