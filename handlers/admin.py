@@ -111,7 +111,13 @@ async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TY
         """, (appointment_id,))
         result = cursor.fetchone()
         if result:
+            notify_id= str(uuid.uuid4())
             telegram_id, appt_date = result
+            # cursor.execute("SELECT id FROM users WHERE telegram_id = %s", (telegram_id,))
+            # user_result = cursor.fetchone()
+            # if not user_result:
+            #     print(f"User with Telegram ID {telegram_id} not found in database.")
+            #     return await query.edit_message_text("❌ ተጠቃሚው አልተገኘም.")
             message = (
                 f"❌ የቀጠሮ ስረዛ ማስታውሻ\n\n"
                 f"በ {to_ethiopian(appt_date)} የነበሮት ቀን ተሰርዟል.\n"
@@ -119,7 +125,7 @@ async def handle_admin_callback(update: Update, context: ContextTypes.DEFAULT_TY
             )
             try:
                 await context.bot.send_message(telegram_id, message)
-                cursor.execute("INSERT INTO notifications (sent_to, message, sent_at) VALUES (%s, %s, %s)", (telegram_id, message, datetime.now()))
+                cursor.execute("INSERT INTO notifications (id, sent_to, message, sent_at) VALUES (%s, %s, %s, %s)", (notify_id, telegram_id, message, datetime.now()))
                 conn.commit()
             except Exception as e:
                 print(f"Failed to notify user {telegram_id}: {e}")
@@ -293,16 +299,19 @@ async def handle_cancel_avail_callback(update: Update, context: ContextTypes.DEF
             
             # Delete availability (will cascade to appointments)
             cursor.execute("UPDATE available_days SET status = 'canceled' WHERE appointment_date = %s", (date_str,))
+            cursor.execute("UPDATE appointments SET status = 'የተሰረዘ' WHERE appointment_date = %s", (date_str,))
             conn.commit()
             
             # Notify affected users
             if telegram_ids:
+                notify_id = str(uuid.uuid4())
                 bot = context.bot
                 for user_id in telegram_ids:
+                    
                     try:
                         await bot.send_message(user_id, message)
                         await asyncio.sleep(3)  # Rate limiting
-                        cursor.execute("INSERT INTO notifications (sent_to, message, sent_at) VALUES (%s, %s, %s)", (user_id, message, datetime.now()))
+                        cursor.execute("INSERT INTO notifications (id, sent_to, message, sent_at) VALUES (%s, %s, %s, %s)", (notify_id, user_id, message, datetime.now()))
                         conn.commit()
                     except Exception as e:
                         print(f"ማሳወቅ አልተቻለም {user_id}: {e}")
