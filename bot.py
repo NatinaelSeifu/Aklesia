@@ -21,7 +21,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def set_commands(app):
-    commands = [
+    user_commands = [
         BotCommand("register", "ይመዘገቡ"),
         BotCommand("book", "ቀጠሮ ያስይዙ"),
         BotCommand("profile", "መገለጫዎን ይመልከቱ"),
@@ -30,12 +30,14 @@ async def set_commands(app):
         BotCommand("questions", "ጥያቄ ወይም አስተያየት ያቅርቡ"),
     ]
 
-    # Only show /admin for the admin
+    # Set for default users
+    await app.bot.set_my_commands(user_commands, scope=BotCommandScopeDefault())
+
+    # Set for each admin
     if ADMIN_ID:
         for admin_id in ADMIN_ID:
             await app.bot.set_my_commands(
-                # if needed the user use commands + []
-                commands = [
+                commands=[
                     BotCommand("users", "የክርስትና ልጆች ዝርዝር ይመልከቱ"),
                     BotCommand("appointments", "ቀጠሮዎች ይመልከቱ"),
                     BotCommand("addavailability", "የቀን ዝርዝር ያክሉ"),
@@ -45,9 +47,6 @@ async def set_commands(app):
                 ],
                 scope=BotCommandScopeChat(chat_id=admin_id)
             )
-
-    
-    await app.bot.set_my_commands(commands, scope=BotCommandScopeDefault())  # For everyone else
     print("✅ Commands set successfully.")
     
 async def post_init(app):
