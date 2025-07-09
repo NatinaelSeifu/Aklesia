@@ -47,7 +47,7 @@ async def set_commands(app):
             )
 
     
-    await app.bot.set_my_commands(commands)  # For everyone else
+    await app.bot.set_my_commands(commands, scope=BotCommandScopeDefault())  # For everyone else
     print("✅ Commands set successfully.")
     
 async def post_init(app):
