@@ -32,7 +32,7 @@ async def handle_questions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"Handling /questions for telegram_id: {telegram_id}")
 
     try:
-        cursor.execute("SELECT telegram_id FROM users WHERE telegram_id = %s", (telegram_id,))
+        cursor.execute("SELECT id FROM users WHERE telegram_id = %s", (telegram_id,))
         user = cursor.fetchone()
         if not user:
             logger.info(f"User {telegram_id} not registered")
@@ -49,8 +49,8 @@ async def handle_questions(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         cursor.execute(
-            "SELECT id, question FROM questions WHERE telegram_id = %s AND status = 'በመጠበቅ'",
-            (telegram_id,)
+            "SELECT id, question FROM questions WHERE user_id = %s AND status = 'በመጠበቅ'",
+            (user,)
         )
         pending_questions = cursor.fetchall()
         logger.info(f"Found {len(pending_questions)} pending questions for user {telegram_id}")
@@ -123,6 +123,16 @@ async def handle_question_submission(update: Update, context: ContextTypes.DEFAU
     logger.info(f"New question submitted by {telegram_id}: {question[:30]}...")
 
     que_id = str(uuid.uuid4())
+    #select user id from users table
+    cursor.execute("SELECT id FROM users WHERE telegram_id = %s", (telegram_id,))
+    user = cursor.fetchone()
+    if not user:
+        logger.info(f"User {telegram_id} not registered")
+        await update.message.reply_text(
+            "እባክዎ መጀመሪያ መመዝገብ አለብዎ። ይመዝገቡ፡ /register"
+        )
+        return ConversationHandler.END
+    
     if not question:
         await update.message.reply_text(
             "ጥያቄዎ ባዶ መሆን አይችልም። እባክዎ ጥያቄዎን እንደገና ያስገቡ።"
@@ -131,8 +141,8 @@ async def handle_question_submission(update: Update, context: ContextTypes.DEFAU
 
     try:
         cursor.execute(
-            "INSERT INTO questions (id, telegram_id, question, status) VALUES (%s, %s, %s, 'በመጠበቅ')",
-            (que_id, telegram_id, question),
+            "INSERT INTO questions (id, user_id, question, status) VALUES (%s, %s, %s, 'በመጠበቅ')",
+            (que_id, user, question),
         )
         conn.commit()
         await update.message.reply_text(
@@ -182,7 +192,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop("editing_question_id", None)
     logger.info("Conversation cancelled")
     await update.message.reply_text(
-        "ጥያቄ መጠየቅ ወይም መቀየር ተሰርዟል። ሌላ ነገር ለመሞከር፡ /start"
+        "ጥያቄ መጠየቅ ወይም መቀየር አቋርጠው ወተዋል። እንደገና ለመጀመር /questions ይጠቀሙ።"
     )
     return ConversationHandler.END
 
